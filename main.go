@@ -23,7 +23,7 @@ type Hash struct {
 	Created time.Time `json:"created_at"`
 }
 
-// MarshalJSON format Time of Hash ex.:2012-10-31 16:13:58.292387 +0000 UTC
+// MarshalJSON format Time of Hash ex.:2019-07-21 23:22:24.664425 -0300 UTC
 func (u *Hash) MarshalJSON() ([]byte, error) {
 	type Alias Hash
 	return json.Marshal(&struct {
@@ -55,8 +55,8 @@ func handleRequests() {
 
 func hashRequests(myRouter *mux.Router) {
 	myRouter.HandleFunc("/", homePage)
-	myRouter.HandleFunc("/hashes/:{id}", getHash)
-	myRouter.HandleFunc("/hashes", allHashes)
+	myRouter.HandleFunc("/hashes/:{id}", getHash).Methods("GET")
+	myRouter.HandleFunc("/hashes", allHashes).Methods("GET")
 	myRouter.HandleFunc("/hash", createHash).Methods("POST")
 }
 

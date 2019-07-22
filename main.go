@@ -7,18 +7,35 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
-	//"github.com/karalabe/go-ethereum/crypto/sha3"
 	"golang.org/x/crypto/sha3"
 )
 
+// TimeFormat used as Time.format()
+const TimeFormat = "2006-01-02 15:04:05.000000 Z0700 UTC"
+
+// Hash Simple Structure
 type Hash struct {
-	Token     string `json:"token"`
-	Hash      string `json:"hash"`
-	CreatedAt string `json:"createdAt"`
+	Token   string    `json:"token,omitempty"`
+	Hash    string    `json:"hash"`
+	Created time.Time `json:"created_at"`
 }
 
+// MarshalJSON format Time of Hash ex.:2012-10-31 16:13:58.292387 +0000 UTC
+func (u *Hash) MarshalJSON() ([]byte, error) {
+	type Alias Hash
+	return json.Marshal(&struct {
+		*Alias
+		Created string `json:"created_at"`
+	}{
+		Alias:   (*Alias)(u),
+		Created: u.Created.Format(TimeFormat),
+	})
+}
+
+// Hashes simulate database
 var Hashes []Hash
 
 func main() {
@@ -32,33 +49,41 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 
 func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
-	myRouter.HandleFunc("/", homePage)
-	myRouter.HandleFunc("/hashes", allHashes)
-	myRouter.HandleFunc("/hashes/{id}", getHash)
-	myRouter.HandleFunc("/hash", createHash).Methods("POST")
+	hashRequests(myRouter)
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
+}
+
+func hashRequests(myRouter *mux.Router) {
+	myRouter.HandleFunc("/", homePage)
+	myRouter.HandleFunc("/hashes/:{id}", getHash)
+	myRouter.HandleFunc("/hashes", allHashes)
+	myRouter.HandleFunc("/hash", createHash).Methods("POST")
 }
 
 func allHashes(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: allHashes")
-	json.NewEncoder(w).Encode(Hashes)
+	if len(Hashes) > 0 {
+		json.NewEncoder(w).Encode(Hashes)
+	}
 }
 
 func getHash(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Endpoint Hit: getHash")
 	vars := mux.Vars(r)
 	key := vars["id"]
 
 	for _, hash := range Hashes {
 		if hash.Hash == key {
 			json.NewEncoder(w).Encode(hash)
+			return
 		}
 	}
 
-	fmt.Println("Endpoint Hit: getHash")
+	http.Error(w, "There is no Hash with id: "+key, http.StatusNoContent)
 }
 
 func createHash(w http.ResponseWriter, r *http.Request) {
-	var resHash Hash
+	fmt.Println("Endpoint Hit: createHash")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("Error reading body: %v", err)
@@ -66,33 +91,42 @@ func createHash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.Unmarshal([]byte(body), &resHash)
+	var sendHash Hash
+	json.Unmarshal([]byte(body), &sendHash)
 
-	for _, hash := range Hashes {
-		if hash.Token == resHash.Token {
-			strResponse := "This Token Was Already Added"
-			json.NewEncoder(w).Encode(strResponse)
-			return
-		}
+	if HashAlreadyAdded(sendHash.Token) {
+		http.Error(w, "This Token Was Already Added", http.StatusBadRequest)
+		return
 	}
-	//sum := sha256.Sum256([]byte("Texto a ser cifrado"))
-	h := make([]byte, 32)
-	buf := []byte("Texto a ser cifrado")
-	// Compute a 64-byte hash of buf and put it in h.
-	sha3.ShakeSum256(h, buf)
-	fmt.Printf("%x\n", h)
-	// expected 369ee900da8fd705ea41965e3df5df6cb7cc87a682bd29cf6c5c99253e9f87d5
-	//sha3.ShakeSum256(h, buf)
-	//fmt.Printf("%x", h)
-	//resHash.Hash = h
-	json.NewEncoder(w).Encode(resHash)
+
+	populateHash(&sendHash)
+	addHash(sendHash)
+
+	json.NewEncoder(w).Encode(
+		&Hash{Token: "", Hash: sendHash.Hash, Created: sendHash.Created},
+	)
 }
 
-func decodeHex(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
+func addHash(hash Hash) {
+	Hashes = append(Hashes, hash)
+}
 
-	return b
+func getHashToken(token string) string {
+	hash := sha3.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
+// HashAlreadyAdded verify if a new token is in
+func HashAlreadyAdded(token string) bool {
+	for _, hash := range Hashes {
+		if hash.Token == token {
+			return true
+		}
+	}
+	return false
+}
+
+func populateHash(hash *Hash) {
+	hash.Hash = getHashToken(hash.Token)
+	hash.Created = time.Now()
 }

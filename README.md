@@ -51,7 +51,7 @@ Simple rest api for hash SHA3-256.
 2. The Result is a Hash Structure
 
 ```JSON
-    URL - http://localhost:8080/hashes/:{id}
+    URL - http://localhost:8080/hashes/:id
     Method - GET
 ```
 
@@ -79,7 +79,8 @@ Simple rest api for hash SHA3-256.
 
 To run all the unit test cases, please do the following -
 
-1. `cd test`
-2. `go test -v`
+1. `go run main.go`
+2. Open a new terminal
+3. `go test -v`
 
 ## Hope everything works. Thank you.

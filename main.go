@@ -38,6 +38,16 @@ func (u *Hash) MarshalJSON() ([]byte, error) {
 // Hashes simulate database
 var Hashes []Hash
 
+// populate data
+func init() {
+	time3, _ := time.Parse(TimeFormat, "2012-10-31 16:13:58.292387 +0000 UTC")
+	time4, _ := time.Parse(TimeFormat, "2012-10-31 16:13:58.292387 +0000 UTC")
+	Hashes = []Hash{
+		{"Texto a ser cifrado 3", "aae889e4b2d49258c278632345044426982d8adcd701443ab9b8ede1f23a9032", time3},
+		{"Texto a ser cifrado 4", "062e47e7d4475416ceb204edc882d07e615a1f656487a4666ae08c3c706a1eb1", time4},
+	}
+}
+
 func main() {
 	handleRequests()
 }
@@ -55,8 +65,8 @@ func handleRequests() {
 
 func hashRequests(myRouter *mux.Router) {
 	myRouter.HandleFunc("/", homePage)
-	myRouter.HandleFunc("/hashes/:{id}", getHash).Methods("GET")
 	myRouter.HandleFunc("/hashes", allHashes).Methods("GET")
+	myRouter.HandleFunc("/hashes/{id}", getHash).Methods("GET")
 	myRouter.HandleFunc("/hash", createHash).Methods("POST")
 }
 
@@ -79,7 +89,7 @@ func getHash(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Error(w, "There is no Hash with id: "+key, http.StatusNoContent)
+	http.Error(w, "There is no Hash with id: "+key, http.StatusNoContent) // Hash Not Found
 }
 
 func createHash(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +105,7 @@ func createHash(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal([]byte(body), &sendHash)
 
 	if HashAlreadyAdded(sendHash.Token) {
-		http.Error(w, "This Token Was Already Added", http.StatusBadRequest)
+		http.Error(w, "Token Already Added", http.StatusConflict)
 		return
 	}
 

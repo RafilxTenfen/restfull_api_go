@@ -13,6 +13,7 @@ Simple rest api for hash SHA3-256.
     ```shell
         go get "golang.org/x/crypto/sha3"
         go get "github.com/gorilla/mux"
+        go get "github.com/gavv/httpexpect"
     ```
 
 3. To run the application, please use the following command -
